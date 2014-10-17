@@ -6,6 +6,8 @@
 define('GEM_REGEX', '#_\\[(\\d+)\\]=(\\{[^\\}]*\\});#');
 define('STATS_REGEX', '#\\$\\.extend\\(g_items\\[GEM_ID\\], (.*)\\);#');
 
+define('DOWNLOAD_LIMIT', 50);
+
 // map wowhead stat names to topfit equivalents
 // use NULL to ignore a certain stat
 $stat_mapping = array(
@@ -51,33 +53,28 @@ $stat_mapping = array(
 
 function debug($text) {
   echo $text . '<br>';
+  ob_flush();
 }
 
-function cURLcheckBasicFunctions()
-{
-  if( !function_exists("curl_init") &&
-      !function_exists("curl_setopt") &&
-      !function_exists("curl_exec") &&
-      !function_exists("curl_close") ) return false;
-  else return true;
+function cURLcheckBasicFunctions() {
+  if(!function_exists("curl_init") && !function_exists("curl_setopt") && !function_exists("curl_exec") && !function_exists("curl_close")) {
+    return false;
+  }
+  return true;
 }
 
-/*
+/**
  * Returns string status information.
  * Can be changed to int or bool return types.
  */
-function cURLdownload($url, $file, $redirects = 30)
-{
-  if( !cURLcheckBasicFunctions() ) return "UNAVAILABLE: cURL Basic Functions";
+function cURLdownload($url, $file, $redirects = 30) {
+  if(!cURLcheckBasicFunctions())
+    return "UNAVAILABLE: cURL Basic Functions";
   $ch = curl_init();
-  if($ch)
-  {
-
+  if($ch) {
     $fp = fopen($file, "w");
-    if($fp)
-    {
-      if( !curl_setopt($ch, CURLOPT_URL, $url) )
-      {
+    if($fp) {
+      if(!curl_setopt($ch, CURLOPT_URL, $url)) {
         fclose($fp); // to match fopen()
         curl_close($ch); // to match curl_init()
         return "FAIL: curl_setopt(CURLOPT_URL)";
@@ -92,7 +89,7 @@ function cURLdownload($url, $file, $redirects = 30)
         if( !curl_setopt($ch, CURLOPT_MAXREDIRS, $redirects) ) return "FAIL: curl_setopt(CURLOPT_MAXREDIRS)";
 
         return curl_exec($ch);
-    } else {
+      } else {
         curl_setopt($ch, CURLOPT_USERAGENT, '"Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.11) Gecko/20071204 Ubuntu/7.10 (gutsy) Firefox/2.0.0.11');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         //curl_setopt($ch, CURLOPT_REFERER, 'http://domain.com/');
@@ -102,28 +99,33 @@ function cURLdownload($url, $file, $redirects = 30)
         if( !curl_setopt($ch, CURLOPT_RETURNTRANSFER, true)) return "FAIL: curl_setopt(CURLOPT_RETURNTRANSFER)";
         if( !curl_setopt($ch, CURLOPT_FORBID_REUSE, false)) return "FAIL: curl_setopt(CURLOPT_FORBID_REUSE)";
         curl_setopt($ch, CURLOPT_USERAGENT, '"Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.11) Gecko/20071204 Ubuntu/7.10 (gutsy) Firefox/2.0.0.11');
-    }
+      }
       // if( !curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true) ) return "FAIL: curl_setopt(CURLOPT_FOLLOWLOCATION)";
       // if( !curl_setopt($ch, CURLOPT_FILE, $fp) ) return "FAIL: curl_setopt(CURLOPT_FILE)";
       // if( !curl_setopt($ch, CURLOPT_HEADER, 0) ) return "FAIL: curl_setopt(CURLOPT_HEADER)";
-      if( !curl_exec($ch) ) return "FAIL: curl_exec()";
+      if(!curl_exec($ch))
+        return "FAIL: curl_exec()";
       curl_close($ch);
       fclose($fp);
       return "SUCCESS: $file [$url]";
     }
-    else return "FAIL: fopen()";
+    return "FAIL: fopen()";
   }
-  else return "FAIL: curl_init()";
+  return "FAIL: curl_init()";
 }
 
 /**
  * Helper function for downloading and caching a page from wowhead
  */
 function download_file($url) {
+  static $download_count = 0;
   $download_folder = dirname(__FILE__) . '/cache/';
   $filename = $download_folder . preg_replace('#[^a-z0-9\\.]#i', '-', $url);
 
   if (!file_exists($filename)) {
+    if (DOWNLOAD_LIMIT && $download_count++ >= DOWNLOAD_LIMIT) {
+      return '';
+    }
     cURLdownload($url, $filename);
     debug("downloaded " . $url);
   }
@@ -140,13 +142,15 @@ debug('found ' .count($gem_matches) . ' gems...');
 $gems = array();
 $gem_count = 0;
 foreach ($gem_matches as $match) {
-  if ($gem_count++ >= 100) break;
+  //if ($gem_count++ >= 100) break;
 
   $gem = array();
   $gem['item_id'] = $match[1];
   $gem['base_data'] = json_decode($match[2], TRUE);
 
   $gem_file = download_file('http://www.wowhead.com/item=' . $gem['item_id']);
+  if (empty($gem_file))
+    break;
   $stat_matches = array();
   preg_match_all(str_replace('GEM_ID', $gem['item_id'], STATS_REGEX), $gem_file, $stat_matches);
 
