@@ -27,12 +27,15 @@ $stat_mapping = array(
   'statsInfo' => '',
   'sellprice' => '',
   'avgbuyout' => '',
+  'commondrop' => '',
 
   //TODO: add handling for these
   'classes' => '',
+  'specs' => '',
   'reqclass' => '',
   'reqskill' => '',
   'reqskillrank' => '',
+  'side' => '', // probably alliance / horde
 
   // actual stats
   'agi' => 'ITEM_MOD_AGILITY_SHORT',
@@ -49,6 +52,14 @@ $stat_mapping = array(
   'pvppower' => 'ITEM_MOD_PVP_POWER_SHORT',
   'multistrike' => '', //TODO: find global string
   'versatility' => '', //TODO: find global string
+  'health' => '', //TODO: find global string
+  'arcres' => '', //TODO: find global string
+  'firres' => '', //TODO: find global string
+  'frores' => '', //TODO: find global string
+  'holres' => '', //TODO: find global string
+  'natres' => '', //TODO: find global string
+  'shares' => '', //TODO: find global string
+  'dmg' => '', //TODO: find global string
 );
 
 function debug($text) {
@@ -161,7 +172,7 @@ foreach ($gem_matches as $match) {
     if (!empty($gem['stat_data']['jsonequip'])) {
       foreach ($gem['stat_data']['jsonequip'] as $key => $value) {
         if (!isset($stat_mapping[$key])) {
-          debug('Unknown stat: ' . $key);
+          debug('Unknown stat: ' . $key . ' (' . print_r($value, TRUE) . ')');
           continue;
         }
 
