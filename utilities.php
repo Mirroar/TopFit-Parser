@@ -10,6 +10,16 @@ function debug($text) {
 }
 
 /**
+ * Add quotes to all elements of an array
+ */
+function quote_parts($array) {
+  array_walk($array, function(&$elem) {
+    $elem = '"' . $elem . '"';
+  });
+  return $array;
+}
+
+/**
  * Returns string status information.
  * Can be changed to int or bool return types.
  */
@@ -38,7 +48,7 @@ function cURLdownload($url, $file, $redirects = 30) {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FORBID_REUSE, false);
       }
-      curl_exec($ch)
+      curl_exec($ch);
       curl_close($ch);
       fclose($fp);
     }
