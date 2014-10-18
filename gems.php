@@ -1,8 +1,5 @@
 <?php
-
 include 'utilities.php';
-//TODO: gem colors
-//TODO: socket types
 
 define('GEM_REGEX', '#_\\[(\\d+)\\]=(\\{[^\\}]*\\});#');
 define('STATS_REGEX', '#\\$\\.extend\\(g_items\\[GEM_ID\\], (.*)\\);#');
@@ -17,11 +14,9 @@ $stat_mapping = array(
   'id' => '',
   'level' => '',
   'name' => '',
-  'reqlevel' => '',
   'slot' => '',
   'source' => '',
   'sourcemore' => '',
-  'subclass' => '',
   'buyprice' => '',
   'statsInfo' => '',
   'sellprice' => '',
@@ -35,6 +30,8 @@ $stat_mapping = array(
   'reqskill' => '', // see $skill_mapping
   'reqskillrank' => '',
   'side' => '', // alliance (1) / horde (2)
+  'reqlevel' => '',
+  'subclass' => '',
 
   // actual stats
   'agi' => 'ITEM_MOD_AGILITY_SHORT',
@@ -63,10 +60,23 @@ $stat_mapping = array(
   'dmg' => 'ITEM_MOD_DAMAGE_PER_SECOND_SHORT', // might not really be dps, but +damage, however that really calculates. but good enough for now
 );
 
-//TODO: probably a good idea to find some global strings for these
+// mapping profession IDs to names
 $skill_mapping = array(
   202 => 'engineering',
   755 => 'jewelcrafting',
+);
+
+// mapping auction item subclasses to socket colors
+$socket_mapping = array(
+  0 => array('red'),
+  1 => array('blue'),
+  2 => array('yellow'),
+  3 => array('red', 'blue'),
+  4 => array('yellow', 'blue'),
+  5 => array('red', 'yellow'),
+  6 => array('meta'),
+  9 => array('sha-touched'),
+  10 => array('cogwheel'),
 );
 
 // load www.wowhead.com/items=3 and go from there
@@ -78,8 +88,6 @@ debug('found ' .count($gem_matches) . ' gems...');
 $gems = array();
 $gem_count = 0;
 foreach ($gem_matches as $match) {
-  //if ($gem_count++ >= 100) break;
-
   $gem = array();
   $gem['item_id'] = $match[1];
   $gem['base_data'] = json_decode($match[2], TRUE);
@@ -112,6 +120,12 @@ foreach ($gem_matches as $match) {
       }
       if (!empty($data['side'])) {
         $gem['topfit']['requirements']['faction'] = ($data['side'] == 1 ? 'alliance' : 'horde');
+      }
+      if (!empty($data['reqlevel'])) {
+        $gem['topfit']['requirements']['level'] = $data['reqlevel'] == 1;
+      }
+      if (isset($data['subclass']) && !empty($socket_mapping[$data['subclass']])) {
+        $gem['topfit']['requirements']['socketcolor'] = $socket_mapping[$data['subclass']];
       }
     }
   }
