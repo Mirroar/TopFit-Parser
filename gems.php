@@ -148,10 +148,20 @@ ns.gemIDs = {
 ';
 
 foreach ($gems as $gem) {
+  // start gem info
   $output .= '  [' . $gem['item_id'] . '] = { -- ' . $gem['base_data']['name_enus'] . "\n";
 
-  $output .= '    colors = {' . implode(', ', quote_parts($gem['topfit']['requirements']['socketcolor'])) . '}' . "\n";
+  // gem colors
+  $output .= '    colors = {' . implode(', ', quote_parts($gem['topfit']['requirements']['socketcolor'])) . '},' . "\n";
 
+  // gem stats
+  $output .= '    stats = {';
+  foreach ($gem['topfit']['stats'] as $stat => $value) {
+    $output .= '["' . $stat . '"] = ' . $value . ',';
+  }
+  $output .= '},' . "\n";
+
+  // end gem info
   $output .= '  },' . "\n";
 }
 
