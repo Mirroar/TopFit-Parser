@@ -1,12 +1,11 @@
 <?php
 
+include 'utilities.php';
 //TODO: gem colors
 //TODO: socket types
 
 define('GEM_REGEX', '#_\\[(\\d+)\\]=(\\{[^\\}]*\\});#');
 define('STATS_REGEX', '#\\$\\.extend\\(g_items\\[GEM_ID\\], (.*)\\);#');
-
-define('DOWNLOAD_LIMIT', 50);
 
 // map wowhead stat names to topfit equivalents
 // use NULL to ignore a certain stat
@@ -50,99 +49,19 @@ $stat_mapping = array(
   'dodgertng' => 'ITEM_MOD_DODGE_RATING_SHORT',
   'resirtng' => 'ITEM_MOD_RESILIENCE_RATING_SHORT',
   'pvppower' => 'ITEM_MOD_PVP_POWER_SHORT',
-  'multistrike' => '', //TODO: find global string
-  'versatility' => '', //TODO: find global string
+  'multistrike' => 'ITEM_MOD_CR_MULTISTIKE_SHORT',
+  'versatility' => 'ITEM_MOD_VERSATILITY',
+  //ITEM_MOD_CR_LIFESTEAL_SHORT
+  //ITEM_MOD_EXTRA_ARMOR_SHORT
   'health' => '', //TODO: find global string
-  'arcres' => '', //TODO: find global string
-  'firres' => '', //TODO: find global string
-  'frores' => '', //TODO: find global string
-  'holres' => '', //TODO: find global string
-  'natres' => '', //TODO: find global string
-  'shares' => '', //TODO: find global string
-  'dmg' => '', //TODO: find global string
+  'arcres' => 'RESISTANCE6_NAME',
+  'firres' => 'RESISTANCE2_NAME',
+  'frores' => 'RESISTANCE4_NAME',
+  'holres' => 'RESISTANCE1_NAME',
+  'natres' => 'RESISTANCE3_NAME',
+  'shares' => 'RESISTANCE6_NAME',
+  'dmg' => 'ITEM_MOD_DAMAGE_PER_SECOND_SHORT', // might not really be dps, but +damage, however that really calculates. but good enough for now
 );
-
-function debug($text) {
-  echo $text . '<br>';
-  ob_flush();
-}
-
-function cURLcheckBasicFunctions() {
-  if(!function_exists("curl_init") && !function_exists("curl_setopt") && !function_exists("curl_exec") && !function_exists("curl_close")) {
-    return false;
-  }
-  return true;
-}
-
-/**
- * Returns string status information.
- * Can be changed to int or bool return types.
- */
-function cURLdownload($url, $file, $redirects = 30) {
-  if(!cURLcheckBasicFunctions())
-    return "UNAVAILABLE: cURL Basic Functions";
-  $ch = curl_init();
-  if($ch) {
-    $fp = fopen($file, "w");
-    if($fp) {
-      if(!curl_setopt($ch, CURLOPT_URL, $url)) {
-        fclose($fp); // to match fopen()
-        curl_close($ch); // to match curl_init()
-        return "FAIL: curl_setopt(CURLOPT_URL)";
-      }
-      if ((!ini_get('open_basedir') && !ini_get('safe_mode')) || $redirects < 1) {
-        curl_setopt($ch, CURLOPT_USERAGENT, '"Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.11) Gecko/20071204 Ubuntu/7.10 (gutsy) Firefox/2.0.0.11');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        //curl_setopt($ch, CURLOPT_REFERER, 'http://domain.com/');
-        //if( !curl_setopt($ch, CURLOPT_HEADER, $curlopt_header)) return "FAIL: curl_setopt(CURLOPT_HEADER)";
-        if( !curl_setopt($ch, CURLOPT_FOLLOWLOCATION, $redirects > 0)) return "FAIL: curl_setopt(CURLOPT_FOLLOWLOCATION)";
-        if( !curl_setopt($ch, CURLOPT_FILE, $fp) ) return "FAIL: curl_setopt(CURLOPT_FILE)";
-        if( !curl_setopt($ch, CURLOPT_MAXREDIRS, $redirects) ) return "FAIL: curl_setopt(CURLOPT_MAXREDIRS)";
-
-        return curl_exec($ch);
-      } else {
-        curl_setopt($ch, CURLOPT_USERAGENT, '"Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.11) Gecko/20071204 Ubuntu/7.10 (gutsy) Firefox/2.0.0.11');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        //curl_setopt($ch, CURLOPT_REFERER, 'http://domain.com/');
-        if( !curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false)) return "FAIL: curl_setopt(CURLOPT_FOLLOWLOCATION)";
-        if( !curl_setopt($ch, CURLOPT_FILE, $fp) ) return "FAIL: curl_setopt(CURLOPT_FILE)";
-        if( !curl_setopt($ch, CURLOPT_HEADER, true)) return "FAIL: curl_setopt(CURLOPT_HEADER)";
-        if( !curl_setopt($ch, CURLOPT_RETURNTRANSFER, true)) return "FAIL: curl_setopt(CURLOPT_RETURNTRANSFER)";
-        if( !curl_setopt($ch, CURLOPT_FORBID_REUSE, false)) return "FAIL: curl_setopt(CURLOPT_FORBID_REUSE)";
-        curl_setopt($ch, CURLOPT_USERAGENT, '"Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.11) Gecko/20071204 Ubuntu/7.10 (gutsy) Firefox/2.0.0.11');
-      }
-      // if( !curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true) ) return "FAIL: curl_setopt(CURLOPT_FOLLOWLOCATION)";
-      // if( !curl_setopt($ch, CURLOPT_FILE, $fp) ) return "FAIL: curl_setopt(CURLOPT_FILE)";
-      // if( !curl_setopt($ch, CURLOPT_HEADER, 0) ) return "FAIL: curl_setopt(CURLOPT_HEADER)";
-      if(!curl_exec($ch))
-        return "FAIL: curl_exec()";
-      curl_close($ch);
-      fclose($fp);
-      return "SUCCESS: $file [$url]";
-    }
-    return "FAIL: fopen()";
-  }
-  return "FAIL: curl_init()";
-}
-
-/**
- * Helper function for downloading and caching a page from wowhead
- */
-function download_file($url) {
-  static $download_count = 0;
-  $download_folder = dirname(__FILE__) . '/cache/';
-  $filename = $download_folder . preg_replace('#[^a-z0-9\\.]#i', '-', $url);
-
-  if (!file_exists($filename)) {
-    if (DOWNLOAD_LIMIT && $download_count++ >= DOWNLOAD_LIMIT) {
-      return '';
-    }
-    cURLdownload($url, $filename);
-    debug("downloaded " . $url);
-  }
-
-  return file_get_contents($filename);
-}
 
 // load www.wowhead.com/items=3 and go from there
 $index = download_file('http://www.wowhead.com/items=3');
@@ -165,9 +84,9 @@ foreach ($gem_matches as $match) {
   $stat_matches = array();
   preg_match_all(str_replace('GEM_ID', $gem['item_id'], STATS_REGEX), $gem_file, $stat_matches);
 
+  $gem['topfit_stats'] = array();
   foreach ($stat_matches[1] as $stat_data) {
     $gem['stat_data'] = json_decode($stat_data, TRUE);
-    $gem['topfit_stats'] = array();
 
     if (!empty($gem['stat_data']['jsonequip'])) {
       foreach ($gem['stat_data']['jsonequip'] as $key => $value) {
@@ -181,6 +100,9 @@ foreach ($gem_matches as $match) {
         }
       }
     }
+  }
+  if (empty($gem['topfit_stats'])) {
+    debug('No applicable stats found for ' . $gem['base_data']['name_enus']);
   }
 
   $gems[] = $gem;
