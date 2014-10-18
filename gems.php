@@ -1,5 +1,6 @@
 <?php
 //TODO: see if info about level-adjusted gem stats can be parsed
+//TODO: add more requirements to output for when they can actually be used by topfit
 
 include 'utilities.php';
 
@@ -122,10 +123,10 @@ foreach ($gem_matches as $match) {
         $gem['topfit']['requirements'][$skill_mapping[$data['reqskill']]] = $data['reqskillrank'];
       }
       if (!empty($data['side'])) {
-        $gem['topfit']['requirements']['faction'] = ($data['side'] == 1 ? 'alliance' : 'horde');
+        $gem['topfit']['requirements']['faction'] = $data['side'];
       }
-      if (!empty($data['reqlevel'])) {
-        $gem['topfit']['requirements']['level'] = $data['reqlevel'] == 1;
+      if (!empty($data['reqlevel']) && $data['reqlevel'] > 1) {
+        $gem['topfit']['requirements']['level'] = $data['reqlevel'];
       }
       if (isset($data['subclass'])) {
         $gem['topfit']['requirements']['socketcolor'] = $socket_mapping[$data['subclass']];
@@ -161,12 +162,20 @@ foreach ($gems as $gem) {
   }
   $output .= '},' . "\n";
 
+  // gem requirements
+  $output .= '    requirements = {';
+  foreach ($gem['topfit']['requirements'] as $stat => $value) {
+    if ($stat == 'socketcolor') continue;
+    $output .= '["' . $stat . '"] = ' . $value . ',';
+  }
+  $output .= '},' . "\n";
+
   // end gem info
   $output .= '  },' . "\n";
 }
 
 $output .= '}' . "\n";
 
-print '<pre>' . $output . '</pre>';
+file_put_contents(dirname(__FILE__) . '/gems.lua', $output);
 
 debug('Done!');
