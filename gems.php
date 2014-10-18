@@ -38,7 +38,7 @@ $stat_mapping = array(
   // actual stats
   'agi' => 'ITEM_MOD_AGILITY_SHORT',
   'str' => 'ITEM_MOD_STRENGTH_SHORT',
-  'int' => 'ITEM_MOD_INTELLIGENCE_SHORT',
+  'int' => 'ITEM_MOD_INTELLECT_SHORT',
   'sta' => 'ITEM_MOD_STAMINA_SHORT',
   'spi' => 'ITEM_MOD_SPIRIT_SHORT',
   'critstrkrtng' => 'ITEM_MOD_CRIT_RATING_SHORT',
