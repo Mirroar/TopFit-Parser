@@ -27,14 +27,14 @@ $stat_mapping = array(
   'sellprice' => '',
   'avgbuyout' => '',
   'commondrop' => '',
-
-  //TODO: add handling for these
   'classes' => '',
-  'specs' => '',
   'reqclass' => '',
-  'reqskill' => '',
+  'specs' => '',
+
+  // interesting information that is parsed and used outside of normal stats
+  'reqskill' => '', // see $skill_mapping
   'reqskillrank' => '',
-  'side' => '', // probably alliance / horde
+  'side' => '', // alliance (1) / horde (2)
 
   // actual stats
   'agi' => 'ITEM_MOD_AGILITY_SHORT',
@@ -63,6 +63,12 @@ $stat_mapping = array(
   'dmg' => 'ITEM_MOD_DAMAGE_PER_SECOND_SHORT', // might not really be dps, but +damage, however that really calculates. but good enough for now
 );
 
+//TODO: probably a good idea to find some global strings for these
+$skill_mapping = array(
+  202 => 'engineering',
+  755 => 'jewelcrafting',
+);
+
 // load www.wowhead.com/items=3 and go from there
 $index = download_file('http://www.wowhead.com/items=3');
 $gem_matches = array();
@@ -78,31 +84,41 @@ foreach ($gem_matches as $match) {
   $gem['item_id'] = $match[1];
   $gem['base_data'] = json_decode($match[2], TRUE);
 
-  $gem_file = download_file('http://www.wowhead.com/item=' . $gem['item_id']);
+  $gem_url = 'http://www.wowhead.com/item=' . $gem['item_id'];
+  $gem_file = download_file($gem_url);
   if (empty($gem_file))
     break;
   $stat_matches = array();
   preg_match_all(str_replace('GEM_ID', $gem['item_id'], STATS_REGEX), $gem_file, $stat_matches);
 
-  $gem['topfit_stats'] = array();
   foreach ($stat_matches[1] as $stat_data) {
     $gem['stat_data'] = json_decode($stat_data, TRUE);
 
     if (!empty($gem['stat_data']['jsonequip'])) {
-      foreach ($gem['stat_data']['jsonequip'] as $key => $value) {
+      $data = $gem['stat_data']['jsonequip'];
+      foreach ($data as $key => $value) {
         if (!isset($stat_mapping[$key])) {
-          debug('Unknown stat: ' . $key . ' (' . print_r($value, TRUE) . ')');
+          debug('Unknown stat: ' . $key . ' (' . print_r($value, TRUE) . ') in ' . 'http://www.wowhead.com/item=' . $gem['item_id']);
           continue;
         }
 
         if (!empty($stat_mapping[$key])) {
-          $gem['topfit_stats'][$stat_mapping[$key]] = $value;
+          $gem['topfit']['stats'][$stat_mapping[$key]] = $value;
         }
+      }
+
+      if (!empty($data['reqskill'])) {
+        $gem['topfit']['requirements'][$skill_mapping[$data['reqskill']]] = $data['reqskillrank'];
+      }
+      if (!empty($data['side'])) {
+        $gem['topfit']['requirements']['faction'] = ($data['side'] == 1 ? 'alliance' : 'horde');
       }
     }
   }
-  if (empty($gem['topfit_stats'])) {
-    debug('No applicable stats found for ' . $gem['base_data']['name_enus']);
+  if (empty($gem['topfit']['stats'])) {
+    // don't need to save gems that do not provide stats (they are the raw gems)
+    debug('No applicable stats found for ' . $gem['base_data']['name_enus'] . ' - skipping');
+    continue;
   }
 
   $gems[] = $gem;
