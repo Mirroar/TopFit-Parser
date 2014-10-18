@@ -73,9 +73,11 @@ $socket_mapping = array(
   1 => array('BLUE'),
   2 => array('YELLOW'),
   3 => array('RED', 'BLUE'),
-  4 => array('YELLOW', 'BLUE'),
+  4 => array('BLUE', 'YELLOW'),
   5 => array('RED', 'YELLOW'),
   6 => array('META'),
+  7 => array(),
+  8 => array('RED', 'BLUE', 'YELLOW'),
   9 => array('HYDRAULIC'), // sha-touched
   10 => array('COGWHEEL'),
 );
@@ -125,7 +127,7 @@ foreach ($gem_matches as $match) {
       if (!empty($data['reqlevel'])) {
         $gem['topfit']['requirements']['level'] = $data['reqlevel'] == 1;
       }
-      if (isset($data['subclass']) && !empty($socket_mapping[$data['subclass']])) {
+      if (isset($data['subclass'])) {
         $gem['topfit']['requirements']['socketcolor'] = $socket_mapping[$data['subclass']];
       }
     }
