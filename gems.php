@@ -69,15 +69,15 @@ $skill_mapping = array(
 
 // mapping auction item subclasses to socket colors
 $socket_mapping = array(
-  0 => array('red'),
-  1 => array('blue'),
-  2 => array('yellow'),
-  3 => array('red', 'blue'),
-  4 => array('yellow', 'blue'),
-  5 => array('red', 'yellow'),
-  6 => array('meta'),
-  9 => array('sha-touched'),
-  10 => array('cogwheel'),
+  0 => array('RED'),
+  1 => array('BLUE'),
+  2 => array('YELLOW'),
+  3 => array('RED', 'BLUE'),
+  4 => array('YELLOW', 'BLUE'),
+  5 => array('RED', 'YELLOW'),
+  6 => array('META'),
+  9 => array('HYDRAULIC'), // sha-touched
+  10 => array('COGWHEEL'),
 );
 
 // load www.wowhead.com/items=3 and go from there
@@ -147,6 +147,8 @@ ns.gemIDs = {
 
 foreach ($gems as $gem) {
   $output .= '  [' . $gem['item_id'] . '] = { -- ' . $gem['base_data']['name_enus'] . "\n";
+
+  $output .= '    colors = {' . implode(', ', quote_parts($gem['topfit']['requirements']['socketcolor'])) . '}' . "\n";
 
   $output .= '  },' . "\n";
 }
