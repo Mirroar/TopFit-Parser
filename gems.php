@@ -1,11 +1,12 @@
 <?php
+//TODO: see if info about level-adjusted gem stats can be parsed
+
 include 'utilities.php';
 
 define('GEM_REGEX', '#_\\[(\\d+)\\]=(\\{[^\\}]*\\});#');
 define('STATS_REGEX', '#\\$\\.extend\\(g_items\\[GEM_ID\\], (.*)\\);#');
 
 // map wowhead stat names to topfit equivalents
-// use NULL to ignore a certain stat
 $stat_mapping = array(
   // deliberately unmapped
   'quality' => '',
@@ -138,8 +139,20 @@ foreach ($gem_matches as $match) {
   $gems[] = $gem;
 }
 
-/*echo '<pre>';
-print_r($gems);
-echo '</pre>';//*/
+// data is collected, time to generate a lua file
+$output = 'local addonName, ns = ...
+
+ns.gemIDs = {
+';
+
+foreach ($gems as $gem) {
+  $output .= '  [' . $gem['item_id'] . '] = { -- ' . $gem['base_data']['name_enus'] . "\n";
+
+  $output .= '  },' . "\n";
+}
+
+$output .= '}' . "\n";
+
+print '<pre>' . $output . '</pre>';
 
 debug('Done!');
