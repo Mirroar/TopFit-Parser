@@ -132,6 +132,8 @@ foreach ($gem_matches as $match) {
         $gem['topfit']['requirements']['socketcolor'] = $socket_mapping[$data['subclass']];
       }
     }
+
+    break;
   }
   if (empty($gem['topfit']['stats'])) {
     // don't need to save gems that do not provide stats (they are the raw gems)
