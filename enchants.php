@@ -10,6 +10,31 @@ define('ENCHANT_BASE_REGEX', '#_\\[SPELL_ID\\]=(\\{[^\\}]*\\});#');
 define('ENCHANT_TOOLTIP_REGEX', '#_\\[SPELL_ID\\]\\.tooltip_enus = \'(.*)\';#');
 define('ENCHANT_ID_REGEX', '#<td[^>]*>Enchant Item\\: [^\\(]*\\((\\d+)\\)</td>#');
 
+define('TOOLTIP_SIMPLE_EFFECT_REGEX', '#Permanently enchants? (.*?) to (.*)\.#');
+
+// map targets from tooltip to item locations
+// TODO: use slot numbers from WoW
+$slot_mapping = array(
+  'a ring' => 0,
+  'a neck' => 0,
+  'a cloak' => 0,
+  'a weapon' => 0,
+  'gloves' => 0,
+  'bracers' => 0,
+  'a chest' => 0,
+  'chest armor' => 0,
+  'boots' => 0,
+  'a pair of boots' => 0,
+  'a shoulder slot item' => 0,
+  'a melee weapon' => 0,
+  'a two-handed weapon' => 0,
+  'a two-handed melee weapon' => 0,
+  'a staff' => 0,
+  'a shield' => 0,
+  'a shield or off-hand item' => 0,
+  'a shield or held item' => 0,
+);
+
 // load www.wowhead.com/items=0.6 and go from there
 $index = download_file('http://www.wowhead.com/items=0.6');
 $enchant_matches = array();
@@ -55,6 +80,16 @@ foreach ($enchant_matches as $match) {
     preg_match_all(ENCHANT_ID_REGEX, $spell_file, $enchant_id_matches);
     foreach ($enchant_id_matches[1] as $enchant_id) {
       $enchant['enchant_id'] = $enchant_id;
+    }
+
+    // now begins the fun part: parsing the tooltip to get information about the enchant's effects
+    $effect_matches = array();
+    preg_match_all(TOOLTIP_SIMPLE_EFFECT_REGEX, $enchant['tooltip'], $effect_matches, PREG_SET_ORDER);
+    foreach ($effect_matches as $effect) {
+      if (!isset($slot_mapping[$effect[1]])) {
+        debug('Unknown Effect Target: ' . $effect[1]);
+      }
+      //debug('Effect: ' . $effect[2]);
     }
 
     break;
