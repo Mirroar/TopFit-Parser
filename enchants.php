@@ -157,7 +157,9 @@ foreach ($enchant_matches as $match) {
 
       preg_match_all(TOOLTIP_SIMPLE_EFFECT_REGEX, $tt, $effect_matches, PREG_SET_ORDER);
       foreach ($effect_matches as $effect) {
-        if (!isset($slot_mapping[$effect[1]])) {
+        if (isset($slot_mapping[$effect[1]])) {
+          $enchant['slot'] = $slot_mapping[$effect[1]];
+        } else {
           debug('Unknown Effect Target: ' . $effect[1]);
         }
         //$parse_successful = TRUE;
@@ -202,16 +204,63 @@ foreach ($enchant_matches as $match) {
       }
 
       if (!$parse_successful) {
-        //debug('Could not parse enchant tooltip: ' . $tt);
+        debug('Could not parse enchant tooltip: ' . $tt);
       }
     }
 
     break;
   }
 
-  $enchants[] = $enchant;
+  if (!empty($enchant['slot'])) {
+    $enchants[$enchant['slot']][] = $enchant;
+  } else {
+    debug('Skipping "' . $enchant['base_data']['name_enus'] . '" because of missing slot info');
+  }
 }
 
-echo '<pre>' . print_r($enchants, TRUE) . '</pre>';
+//echo '<pre>' . print_r($enchants, TRUE) . '</pre>';
+
+// data is collected, time to generate a lua file
+$output = 'local addonName, ns = ...
+
+ns.enchantIDs = {
+';
+
+foreach ($enchants as $slot => $enchant_group) {
+  $output .= '  [' . $slot . '] = {' . "\n";
+  foreach ($enchant_group as $enchant) {
+    // start enchant info
+    $output .= '    [' . $enchant['enchant_id'] . '] = { -- ' . $enchant['base_data']['name_enus'] . "\n";
+
+    $output .= '      itemID = ' . $enchant['item_id'] . ',' .  "\n";
+    $output .= '      spellID = ' . $enchant['spell_id'] . ',' .  "\n";
+
+    // enchant stats
+    $output .= '      stats = {';
+    if (!empty($enchant['topfit']['stats'])) {
+      foreach ($enchant['topfit']['stats'] as $stat => $value) {
+        $output .= '["' . $stat . '"] = ' . $value . ',';
+      }
+    }
+    $output .= '},' . "\n";
+
+    // enchant requirements
+    if (!empty($enchant['topfit']['requirements'])) {
+      $output .= '      requirements = {';
+      foreach ($enchant['topfit']['requirements'] as $stat => $value) {
+        $output .= '["' . $stat . '"] = ' . $value . ',';
+      }
+      $output .= '},' . "\n";
+    }
+
+    // end enchant info
+    $output .= '    },' . "\n";
+  }
+  $output .= '  },' . "\n";
+}
+
+$output .= '}' . "\n";
+
+file_put_contents(dirname(__FILE__) . '/enchants.lua', $output);
 
 debug('Done!');
