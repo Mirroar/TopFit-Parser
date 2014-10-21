@@ -99,10 +99,13 @@ preg_match_all(ENCHANT_REGEX, $index, $enchant_matches, PREG_SET_ORDER);
 debug('found ' .count($enchant_matches) . ' potential enchants...');
 
 $enchants = array();
+$unknown_enchants = array();
 foreach ($enchant_matches as $match) {
   $enchant = array();
   $enchant['item_id'] = $match[1];
   $enchant['base_data'] = json_decode($match[2], TRUE);
+
+  if (empty($enchant['base_data']['name_enus'])) continue;
 
   $enchant_url = 'http://www.wowhead.com/item=' . $enchant['item_id'];
   $enchant_file = download_file($enchant_url);
@@ -139,9 +142,9 @@ foreach ($enchant_matches as $match) {
       $enchant['enchant_id'] = $enchant_id;
     }
 
+    $parse_successful = FALSE;
     if (!empty($enchant['enchant_id'])) {
       // now begins the fun part: parsing the tooltip to get information about the enchant's effects
-      $parse_successful = FALSE;
 
       $effect_matches = array();
       $tt = $enchant['tooltip'];
@@ -202,10 +205,10 @@ foreach ($enchant_matches as $match) {
           }
         }
       }
-
-      if (!$parse_successful) {
-        debug('Could not parse enchant tooltip: ' . $tt);
-      }
+    }
+    if (!$parse_successful) {
+      debug('Could not parse enchant "' . $enchant['base_data']['name_enus'] . '"');
+      $enchant['parse_failed'] = TRUE;
     }
 
     break;
@@ -214,13 +217,16 @@ foreach ($enchant_matches as $match) {
   if (!empty($enchant['slot'])) {
     $enchants[$enchant['slot']][] = $enchant;
   } else {
-    debug('Skipping "' . $enchant['base_data']['name_enus'] . '" because of missing slot info');
+    debug('Skipping "' . $enchant['base_data']['name_enus'] . '" because of missing slot info.');
+    $unknown_enchants[] = $enchant;
   }
 }
 
 //echo '<pre>' . print_r($enchants, TRUE) . '</pre>';
 
 // data is collected, time to generate a lua file
+$enchants['"UNKNOWN"'] = $unknown_enchants;
+
 $output = 'local addonName, ns = ...
 
 ns.enchantIDs = {
@@ -229,11 +235,16 @@ ns.enchantIDs = {
 foreach ($enchants as $slot => $enchant_group) {
   $output .= '  [' . $slot . '] = {' . "\n";
   foreach ($enchant_group as $enchant) {
+    if (empty($enchant['enchant_id'])) continue;
     // start enchant info
     $output .= '    [' . $enchant['enchant_id'] . '] = { -- ' . $enchant['base_data']['name_enus'] . "\n";
 
     $output .= '      itemID = ' . $enchant['item_id'] . ',' .  "\n";
     $output .= '      spellID = ' . $enchant['spell_id'] . ',' .  "\n";
+
+    if (!empty($enchant['parse_failed'])) {
+      $output .= '      couldNotParse = true,' .  "\n";
+    }
 
     // enchant stats
     $output .= '      stats = {';
@@ -258,7 +269,6 @@ foreach ($enchants as $slot => $enchant_group) {
   }
   $output .= '  },' . "\n";
 }
-
 $output .= '}' . "\n";
 
 file_put_contents(dirname(__FILE__) . '/enchants.lua', $output);
