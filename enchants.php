@@ -1,5 +1,4 @@
 <?php
-//TODO: see if info about level-adjusted gem stats can be parsed
 //TODO: add more requirements to output for when they can actually be used by topfit
 
 include 'utilities.php';
@@ -11,17 +10,17 @@ define('ENCHANT_TOOLTIP_REGEX', '#_\\[SPELL_ID\\]\\.tooltip_enus = \'(.*)\';#');
 define('ENCHANT_ID_REGEX', '#<td[^>]*>Enchant Item\\: [^\\(]*\\((\\d+)\\)</td>#i');
 
 define('TOOLTIP_MAX_LEVEL_REGEX', '#Cannot be applied to items higher than level (\\d+)#i');
-define('TOOLTIP_SIMPLE_EFFECT_REGEX', '#Permanently enchants? (.*?) [ts]o (.*)\\.#i');
+define('TOOLTIP_SIMPLE_EFFECT_REGEX', '#Permanently (?:enchants?|attache?s? .*? onto) (.*?) [ts]o (.*)\\.#i');
 define('TOOLTIP_TIMED_STAT_REGEX', '#(?:sometimes)? increase (.*?) by (\\d+) for (\\d+) sec#i');
 define('TOOLTIP_SIMPLE_STAT_REGEX', '#increase (.*?) by (\\d+)#i');
 
-// map targets from tooltip to item locations
-// TODO: use slot numbers from WoW
+// map targets from tooltip to item locations using slot numbers from WoW
 $slot_mapping = array(
   'a neck' => 2,
   'a shoulder slot item' => 3,
   'a chest' => 5,
   'chest armor' => 5,
+  'pants' => 7,
   'boots' => 8,
   'a pair of boots' => 8,
   'bracers' => 9,
@@ -39,6 +38,7 @@ $slot_mapping = array(
   'a shield or held item' => 17,
 );
 
+// map stat names as used in tooltips to stat global strings
 $stat_mapping = array(
   'Agility' => 'ITEM_MOD_AGILITY_SHORT',
   'your Agility' => 'ITEM_MOD_AGILITY_SHORT',
