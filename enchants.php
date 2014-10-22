@@ -176,7 +176,9 @@ foreach ($enchant_matches as $match) {
               $stats = array($stats);
             }
             foreach ($stats as $single_stat) {
-              $enchant['topfit']['stats'][$single_stat] = $stat[2] / $stat[3];
+              $enchant['topfit']['stats'][$single_stat] = $stat[2] * $stat[3] / 90; // assumes 90 second internal cooldown for most enchants
+              //TODO: Actually, especially noting down http://us.battle.net/wow/en/forum/topic/13087818929?page=23#442 this varies a lot per enchant and should probably be tagged for reviewing
+              debug('Timed enchant: ' . $stat[0] . ' (' . $enchant['base_data']['name_enus'] . ')');
             }
             $parse_successful = TRUE;
 
