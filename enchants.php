@@ -7,22 +7,26 @@ define('ENCHANT_REGEX', '#_\\[(\\d+)\\]=(\\{[^\\}]*\\});#');
 define('ENCHANT_SPELL_REGEX', '#\\(\\$WH\\.g_enhanceTooltip\\.bind\\(tt\\)\\)\\(ITEM_ID,[^\\[\\)]*\\[(\\d+)\\][^\\)]*\\)#');
 define('ENCHANT_BASE_REGEX', '#_\\[SPELL_ID\\]=(\\{[^\\}]*\\});#');
 define('ENCHANT_TOOLTIP_REGEX', '#_\\[SPELL_ID\\]\\.tooltip_enus = \'(.*)\';#');
-define('ENCHANT_ID_REGEX', '#<td[^>]*>Enchant Item\\: [^\\(]*\\((\\d+)\\)</td>#i');
+define('ENCHANT_ID_REGEX', '#<td[^>]*>Enchant Item\\: [^\\(]*\\((\\d+)\\)#i');
 
 define('TOOLTIP_MAX_LEVEL_REGEX', '#Cannot be applied to items higher than level (\\d+)#i');
-define('TOOLTIP_SIMPLE_EFFECT_REGEX1', '#Permanently enchants? (.*?) [ts]o (.*)\\.#i');
-define('TOOLTIP_SIMPLE_EFFECT_REGEX2', '#Permanently attache?s? .*? onto (.*?) [ts]o (.*)\\.#i');
-define('TOOLTIP_SIMPLE_EFFECT_REGEX3', '#Permanently embroiders? .*? into (.*?), (.*)\\.#i');
+define('TOOLTIP_SIMPLE_EFFECT_REGEX1', '#Permanently enchants? (?<target>.*?) [ts]o (?<stats>.*)\\.#i');
+define('TOOLTIP_SIMPLE_EFFECT_REGEX2', '#Permanently attache?s? .*? onto (?<target>.*?) [ts]o (?<stats>.*)\\.#i');
+define('TOOLTIP_SIMPLE_EFFECT_REGEX3', '#Permanently embroiders? .*? into (?<target>.*?), (?<stats>.*)\\.#i');
+define('TOOLTIP_ALT_EFFECT_REGEX', '#Permanently adds? (?<stats>.*?) to (?<target>.*?)\\.#i');
 define('TOOLTIP_TIMED_STAT_REGEX', '#(?:sometimes)? increas(?:e|ing) (.*?) by (\\d+) for (\\d+) sec#i');
-define('TOOLTIP_SIMPLE_STAT_REGEX', '#increas(?:e|ing) (.*?) by (\\d+)#i');
+define('TOOLTIP_SIMPLE_STAT_REGEX', '#increas(?:e|ing) (?<stat1>.*?) by (?<amount1>\\d+)(?: and (?<stat2>.*?) by (?<amount2>\\d+))?#i');
+define('TOOLTIP_SIMPLER_STAT_REGEX', '#(?<amount1>\\d+) (?<stat1>.*?)(?: and (?<amount2>\\d+) (?<stat2>.*?))?$#i');
 
 // map targets from tooltip to item locations using slot numbers from WoW
 $slot_mapping = array(
   'a neck' => 2,
+  'shoulder armor' => 3,
   'a shoulder slot item' => 3,
   'a chest' => 5,
   'chest armor' => 5,
   'pants' => 7,
+  'a leg slot item' => 7,
   'boots' => 8,
   'a pair of boots' => 8,
   'bracers' => 9,
@@ -88,10 +92,18 @@ $stat_mapping = array(
   'PvP Resilience' => 'ITEM_MOD_RESILIENCE_RATING_SHORT',
   'armor' => 'RESISTANCE0_NAME',
   'Bonus Armor' => 'RESISTANCE0_NAME',
-  'health' => array(), // usually irrelevant and not used by TopFit
-  'mana' => array(), // usually irrelevant and not used by TopFit
-  'movement speed' => array(), // currently not used by TopFit
-  'hit' => array(), // hit rating: gone!
+  // currently not used by TopFit
+  'health' => array(),
+  'mana' => array(),
+  'movement speed' => array(),
+  'mount speed' => array(),
+  'Mining skill' => array(),
+  'Fishing skill' => array(),
+  'Herbalism skill' => array(),
+  'Skinning skill' => array(),
+  'Herbalism, Mining, and Skinning skills' => array(),
+  'hit' => array(),
+  'additional points of damage. ' => array(),
 );
 
 // load www.wowhead.com/items=0.6 and go from there
@@ -160,18 +172,18 @@ foreach ($enchant_matches as $match) {
         $tt = str_replace($effect[0], '', $tt);
       }
 
-      foreach(array(TOOLTIP_SIMPLE_EFFECT_REGEX1, TOOLTIP_SIMPLE_EFFECT_REGEX2, TOOLTIP_SIMPLE_EFFECT_REGEX3) as $regex) {
+      foreach(array(TOOLTIP_SIMPLE_EFFECT_REGEX1, TOOLTIP_SIMPLE_EFFECT_REGEX2, TOOLTIP_SIMPLE_EFFECT_REGEX3, TOOLTIP_ALT_EFFECT_REGEX) as $regex) {
         preg_match_all($regex, $tt, $effect_matches, PREG_SET_ORDER);
         foreach ($effect_matches as $effect) {
-          if (isset($slot_mapping[$effect[1]])) {
-            $enchant['slot'] = $slot_mapping[$effect[1]];
+          if (isset($slot_mapping[$effect['target']])) {
+            $enchant['slot'] = $slot_mapping[$effect['target']];
           } else {
-            debug('Unknown Effect Target: ' . $effect[1]);
+            debug('Unknown Effect Target: ' . $effect['target']);
           }
           //$parse_successful = TRUE;
-          //debug('Effect: ' . $effect[2]);
+          //debug('Effect: ' . $effect['stats']);
           $stat_matches = array();
-          preg_match_all(TOOLTIP_TIMED_STAT_REGEX, $effect[2], $stat_matches, PREG_SET_ORDER);
+          preg_match_all(TOOLTIP_TIMED_STAT_REGEX, $effect['stats'], $stat_matches, PREG_SET_ORDER);
           foreach ($stat_matches as $stat) {
             if (isset($stat_mapping[$stat[1]])) {
               $stats = $stat_mapping[$stat[1]];
@@ -181,32 +193,44 @@ foreach ($enchant_matches as $match) {
               foreach ($stats as $single_stat) {
                 $enchant['topfit']['stats'][$single_stat] = $stat[2] * $stat[3] / 90; // assumes 90 second internal cooldown for most enchants
                 //TODO: Actually, especially noting down http://us.battle.net/wow/en/forum/topic/13087818929?page=23#442 this varies a lot per enchant and should probably be tagged for reviewing
-                debug('Timed enchant: ' . $stat[0] . ' (' . $enchant['base_data']['name_enus'] . ')');
+                //debug('Timed enchant: ' . $stat[0] . ' (' . $enchant['base_data']['name_enus'] . ')');
               }
               $parse_successful = TRUE;
 
-              $effect[2] = str_replace($stat[0], '', $effect[2]);
+              $effect['stats'] = str_replace($stat[0], '', $effect['stats']);
             } else {
               debug('Unknown stat (timed): ' . $stat[1]);
             }
           }
 
-          $stat_matches = array();
-          preg_match_all(TOOLTIP_SIMPLE_STAT_REGEX, $effect[2], $stat_matches, PREG_SET_ORDER);
-          foreach ($stat_matches as $stat) {
-            if (isset($stat_mapping[$stat[1]])) {
-              $stats = $stat_mapping[$stat[1]];
-              if (!is_array($stats)) {
-                $stats = array($stats);
-              }
-              foreach ($stats as $single_stat) {
-                $enchant['topfit']['stats'][$single_stat] = $stat[2];
-              }
-              $parse_successful = TRUE;
+          foreach (array(TOOLTIP_SIMPLE_STAT_REGEX, TOOLTIP_SIMPLER_STAT_REGEX) as $stat_regex) {
+            $stat_matches = array();
+            preg_match_all($stat_regex, $effect['stats'], $stat_matches, PREG_SET_ORDER);
+            foreach ($stat_matches as $stat) {
+              if (isset($stat_mapping[$stat['stat1']])) {
+                $stats = $stat_mapping[$stat['stat1']];
+                if (!is_array($stats)) {
+                  $stats = array($stats);
+                }
+                foreach ($stats as $single_stat) {
+                  $enchant['topfit']['stats'][$single_stat] = $stat['amount1'];
+                }
+                $parse_successful = TRUE;
 
-              $effect[2] = str_replace($stat[0], '', $effect[2]);
-            } else {
-              debug('Unknown stat: ' . $stat[1]);
+                if (!empty($stat['stat2']) && isset($stat_mapping[$stat['stat2']])) {
+                  $stats = $stat_mapping[$stat['stat2']];
+                  if (!is_array($stats)) {
+                    $stats = array($stats);
+                  }
+                  foreach ($stats as $single_stat) {
+                    $enchant['topfit']['stats'][$single_stat] = $stat['amount2'];
+                  }
+                }
+
+                $effect['stats'] = str_replace($stat[0], '', $effect['stats']);
+              } else {
+                debug('Unknown stat: ' . $stat['stat1']);
+              }
             }
           }
         }
