@@ -78,6 +78,7 @@ $stat_mapping = array(
   'versatility' => 'ITEM_MOD_VERSATILITY',
   'parry' => 'ITEM_MOD_PARRY_RATING_SHORT',
   'dodge' => 'ITEM_MOD_DODGE_RATING_SHORT',
+  'Dodge' => 'ITEM_MOD_DODGE_RATING_SHORT',
   'your dodge' => 'ITEM_MOD_DODGE_RATING_SHORT',
   'Agility and dodge' => array(
     'ITEM_MOD_AGILITY_SHORT',
