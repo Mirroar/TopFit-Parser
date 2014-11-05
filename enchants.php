@@ -3,6 +3,7 @@
 
 include 'utilities.php';
 
+define('LIST_SECTION_REGEX', '#var _ = {};([\s\S]*?)\\$\\.extend\\(true, ([^ ]*), _\\);#m');
 define('ENCHANT_REGEX', '#_\\[(\\d+)\\]=(\\{[^\\}]*\\});#');
 define('ENCHANT_SPELL_REGEX', '#\\(\\$WH\\.g_enhanceTooltip\\.bind\\(tt\\)\\)\\(ITEM_ID,[^\\[\\)]*\\[(\\d+)\\][^\\)]*\\)#');
 define('ENCHANT_BASE_REGEX', '#_\\[SPELL_ID\\]=(\\{[^\\}]*\\});#');
@@ -109,10 +110,31 @@ $stat_mapping = array(
 
 $enchants = array();
 $unknown_enchants = array();
+
+function filter_index_section($index, $section) {
+  $output = '';
+  $index_matches = array();
+  preg_match_all(LIST_SECTION_REGEX, $index, $index_matches, PREG_SET_ORDER);
+  foreach ($index_matches as $match) {
+    if ($match[2] == $section) {
+      $output .= $match[1];
+    }
+  }
+
+  return $output;
+}
+
 function start_parsing($url, $spells_only = FALSE) {
   global $slot_mapping, $stat_mapping, $enchants, $unknown_enchants;
   // load www.wowhead.com/items=0.6 and go from there
   $index = download_file($url);
+
+  if ($spells_only) {
+    $index = filter_index_section($index, 'g_spells');
+  } else {
+    $index = filter_index_section($index, 'g_items');
+  }
+
   $enchant_matches = array();
   preg_match_all(ENCHANT_REGEX, $index, $enchant_matches, PREG_SET_ORDER);
   debug('found ' .count($enchant_matches) . ' potential enchants...');
@@ -123,132 +145,132 @@ function start_parsing($url, $spells_only = FALSE) {
       $enchant['spell_id'] = $match[1];
     } else {
       $enchant['item_id'] = $match[1];
+
+      $enchant_url = 'http://www.wowhead.com/item=' . $enchant['item_id'];
+      $enchant_file = download_file($enchant_url);
+      if (empty($enchant_file))
+        break;
+
+      // find the corresponding spell that applies the item's effect
+      $spell_matches = array();
+      preg_match_all(str_replace('ITEM_ID', $enchant['item_id'], ENCHANT_SPELL_REGEX), $enchant_file, $spell_matches);
+      foreach ($spell_matches[1] as $spell_id) {
+        $enchant['spell_id'] = $spell_id;
+        break;
+      }
     }
     $enchant['base_data'] = json_decode($match[2], TRUE);
 
     if (empty($enchant['base_data']['name_enus'])) continue;
+    if (empty($enchant['spell_id'])) continue;
 
-    $enchant_url = 'http://www.wowhead.com/item=' . $enchant['item_id'];
-    $enchant_file = download_file($enchant_url);
-    if (empty($enchant_file))
+    $spell_url = 'http://www.wowhead.com/spell=' . $enchant['spell_id'];
+    $spell_file = download_file($spell_url);
+
+    if (empty($spell_file))
       break;
 
-    // find the corresponding spell that applies the item's effect
-    $spell_matches = array();
-    preg_match_all(str_replace('ITEM_ID', $enchant['item_id'], ENCHANT_SPELL_REGEX), $enchant_file, $spell_matches);
-    foreach ($spell_matches[1] as $spell_id) {
-      $enchant['spell_id'] = $spell_id;
+    $spell_info_matches = array();
+    preg_match_all(str_replace('SPELL_ID', $enchant['spell_id'], ENCHANT_BASE_REGEX), $spell_file, $spell_info_matches);
+    foreach ($spell_info_matches[1] as $spell_json) {
+      $enchant['spell_data'] = json_decode($spell_json, TRUE);
+    }
 
-      $spell_url = 'http://www.wowhead.com/spell=' . $enchant['spell_id'];
-      $spell_file = download_file($spell_url);
+    $tooltip_matches = array();
+    preg_match_all(str_replace('SPELL_ID', $enchant['spell_id'], ENCHANT_TOOLTIP_REGEX), $spell_file, $tooltip_matches);
+    foreach ($tooltip_matches[1] as $tooltip) {
+      $enchant['tooltip'] = str_replace('\\\'', '\'', $tooltip);
+    }
 
-      if (empty($spell_file))
-        break 2;
+    $enchant_id_matches = array();
+    preg_match_all(ENCHANT_ID_REGEX, $spell_file, $enchant_id_matches);
+    foreach ($enchant_id_matches[1] as $enchant_id) {
+      $enchant['enchant_id'] = $enchant_id;
+    }
 
-      $spell_info_matches = array();
-      preg_match_all(str_replace('SPELL_ID', $enchant['spell_id'], ENCHANT_BASE_REGEX), $spell_file, $spell_info_matches);
-      foreach ($spell_info_matches[1] as $spell_json) {
-        $enchant['spell_data'] = json_decode($spell_json, TRUE);
+    $parse_successful = FALSE;
+    if (!empty($enchant['enchant_id'])) {
+      // now begins the fun part: parsing the tooltip to get information about the enchant's effects
+
+      $effect_matches = array();
+      $tt = $enchant['tooltip'];
+
+      // clean tooltip from unnecessary info
+      $tt = strip_tags($tt);
+
+      preg_match_all(TOOLTIP_MAX_LEVEL_REGEX, $tt, $effect_matches, PREG_SET_ORDER);
+      foreach ($effect_matches as $effect) {
+        $enchant['topfit']['requirements']['max_ilevel'] = $effect[1];
+        $tt = str_replace($effect[0], '', $tt);
       }
 
-      $tooltip_matches = array();
-      preg_match_all(str_replace('SPELL_ID', $enchant['spell_id'], ENCHANT_TOOLTIP_REGEX), $spell_file, $tooltip_matches);
-      foreach ($tooltip_matches[1] as $tooltip) {
-        $enchant['tooltip'] = str_replace('\\\'', '\'', $tooltip);
-      }
-
-      $enchant_id_matches = array();
-      preg_match_all(ENCHANT_ID_REGEX, $spell_file, $enchant_id_matches);
-      foreach ($enchant_id_matches[1] as $enchant_id) {
-        $enchant['enchant_id'] = $enchant_id;
-      }
-
-      $parse_successful = FALSE;
-      if (!empty($enchant['enchant_id'])) {
-        // now begins the fun part: parsing the tooltip to get information about the enchant's effects
-
-        $effect_matches = array();
-        $tt = $enchant['tooltip'];
-
-        // clean tooltip from unnecessary info
-        $tt = strip_tags($tt);
-
-        preg_match_all(TOOLTIP_MAX_LEVEL_REGEX, $tt, $effect_matches, PREG_SET_ORDER);
+      foreach(array(TOOLTIP_SIMPLE_EFFECT_REGEX1, TOOLTIP_SIMPLE_EFFECT_REGEX2, TOOLTIP_SIMPLE_EFFECT_REGEX3, TOOLTIP_ALT_EFFECT_REGEX) as $regex) {
+        preg_match_all($regex, $tt, $effect_matches, PREG_SET_ORDER);
         foreach ($effect_matches as $effect) {
-          $enchant['topfit']['requirements']['max_ilevel'] = $effect[1];
-          $tt = str_replace($effect[0], '', $tt);
-        }
+          if (isset($slot_mapping[$effect['target']])) {
+            $enchant['slot'] = $slot_mapping[$effect['target']];
+          } else {
+            debug('Unknown Effect Target: ' . $effect['target']);
+          }
+          //$parse_successful = TRUE;
+          //debug('Effect: ' . $effect['stats']);
+          $stat_matches = array();
+          preg_match_all(TOOLTIP_TIMED_STAT_REGEX, $effect['stats'], $stat_matches, PREG_SET_ORDER);
+          foreach ($stat_matches as $stat) {
+            if (isset($stat_mapping[$stat[1]])) {
+              $stats = $stat_mapping[$stat[1]];
+              if (!is_array($stats)) {
+                $stats = array($stats);
+              }
+              foreach ($stats as $single_stat) {
+                $enchant['topfit']['stats'][$single_stat] = $stat[2] * $stat[3] / 90; // assumes 90 second internal cooldown for most enchants
+                //TODO: Actually, especially noting down http://us.battle.net/wow/en/forum/topic/13087818929?page=23#442 this varies a lot per enchant and should probably be tagged for reviewing
+                //debug('Timed enchant: ' . $stat[0] . ' (' . $enchant['base_data']['name_enus'] . ')');
+              }
+              $parse_successful = TRUE;
 
-        foreach(array(TOOLTIP_SIMPLE_EFFECT_REGEX1, TOOLTIP_SIMPLE_EFFECT_REGEX2, TOOLTIP_SIMPLE_EFFECT_REGEX3, TOOLTIP_ALT_EFFECT_REGEX) as $regex) {
-          preg_match_all($regex, $tt, $effect_matches, PREG_SET_ORDER);
-          foreach ($effect_matches as $effect) {
-            if (isset($slot_mapping[$effect['target']])) {
-              $enchant['slot'] = $slot_mapping[$effect['target']];
+              $effect['stats'] = str_replace($stat[0], '', $effect['stats']);
             } else {
-              debug('Unknown Effect Target: ' . $effect['target']);
+              debug('Unknown stat (timed): ' . $stat[1]);
             }
-            //$parse_successful = TRUE;
-            //debug('Effect: ' . $effect['stats']);
+          }
+
+          foreach (array(TOOLTIP_SIMPLE_STAT_REGEX, TOOLTIP_SIMPLER_STAT_REGEX) as $stat_regex) {
             $stat_matches = array();
-            preg_match_all(TOOLTIP_TIMED_STAT_REGEX, $effect['stats'], $stat_matches, PREG_SET_ORDER);
+            preg_match_all($stat_regex, $effect['stats'], $stat_matches, PREG_SET_ORDER);
             foreach ($stat_matches as $stat) {
-              if (isset($stat_mapping[$stat[1]])) {
-                $stats = $stat_mapping[$stat[1]];
+              if (isset($stat_mapping[$stat['stat1']])) {
+                $stats = $stat_mapping[$stat['stat1']];
                 if (!is_array($stats)) {
                   $stats = array($stats);
                 }
                 foreach ($stats as $single_stat) {
-                  $enchant['topfit']['stats'][$single_stat] = $stat[2] * $stat[3] / 90; // assumes 90 second internal cooldown for most enchants
-                  //TODO: Actually, especially noting down http://us.battle.net/wow/en/forum/topic/13087818929?page=23#442 this varies a lot per enchant and should probably be tagged for reviewing
-                  //debug('Timed enchant: ' . $stat[0] . ' (' . $enchant['base_data']['name_enus'] . ')');
+                  $enchant['topfit']['stats'][$single_stat] = $stat['amount1'];
                 }
                 $parse_successful = TRUE;
 
-                $effect['stats'] = str_replace($stat[0], '', $effect['stats']);
-              } else {
-                debug('Unknown stat (timed): ' . $stat[1]);
-              }
-            }
-
-            foreach (array(TOOLTIP_SIMPLE_STAT_REGEX, TOOLTIP_SIMPLER_STAT_REGEX) as $stat_regex) {
-              $stat_matches = array();
-              preg_match_all($stat_regex, $effect['stats'], $stat_matches, PREG_SET_ORDER);
-              foreach ($stat_matches as $stat) {
-                if (isset($stat_mapping[$stat['stat1']])) {
-                  $stats = $stat_mapping[$stat['stat1']];
+                if (!empty($stat['stat2']) && isset($stat_mapping[$stat['stat2']])) {
+                  $stats = $stat_mapping[$stat['stat2']];
                   if (!is_array($stats)) {
                     $stats = array($stats);
                   }
                   foreach ($stats as $single_stat) {
-                    $enchant['topfit']['stats'][$single_stat] = $stat['amount1'];
+                    $enchant['topfit']['stats'][$single_stat] = $stat['amount2'];
                   }
-                  $parse_successful = TRUE;
-
-                  if (!empty($stat['stat2']) && isset($stat_mapping[$stat['stat2']])) {
-                    $stats = $stat_mapping[$stat['stat2']];
-                    if (!is_array($stats)) {
-                      $stats = array($stats);
-                    }
-                    foreach ($stats as $single_stat) {
-                      $enchant['topfit']['stats'][$single_stat] = $stat['amount2'];
-                    }
-                  }
-
-                  $effect['stats'] = str_replace($stat[0], '', $effect['stats']);
-                } else {
-                  debug('Unknown stat: ' . $stat['stat1']);
                 }
+
+                $effect['stats'] = str_replace($stat[0], '', $effect['stats']);
+              } else {
+                debug('Unknown stat: ' . $stat['stat1']);
               }
             }
           }
         }
       }
-      if (!$parse_successful) {
-        debug('Could not parse enchant "' . $enchant['base_data']['name_enus'] . '"');
-        $enchant['parse_failed'] = TRUE;
-      }
-
-      break;
+    }
+    if (!$parse_successful) {
+      debug('Could not parse enchant "' . $enchant['base_data']['name_enus'] . '"');
+      $enchant['parse_failed'] = TRUE;
     }
 
     if (!empty($enchant['slot'])) {
@@ -261,7 +283,7 @@ function start_parsing($url, $spells_only = FALSE) {
 }
 
 start_parsing('http://www.wowhead.com/items=0.6');
-//start_parsing('http://www.wowhead.com/skill=773', TRUE);
+start_parsing('http://www.wowhead.com/skill=773', TRUE);
 
 //echo '<pre>' . print_r($enchants, TRUE) . '</pre>';
 
@@ -280,7 +302,9 @@ foreach ($enchants as $slot => $enchant_group) {
     // start enchant info
     $output .= '    [' . $enchant['enchant_id'] . '] = { -- ' . $enchant['base_data']['name_enus'] . "\n";
 
-    $output .= '      itemID = ' . $enchant['item_id'] . ',' .  "\n";
+    if (!empty($enchant['item_id'])) {
+      $output .= '      itemID = ' . $enchant['item_id'] . ',' .  "\n";
+    }
     $output .= '      spellID = ' . $enchant['spell_id'] . ',' .  "\n";
 
     if (!empty($enchant['parse_failed'])) {
