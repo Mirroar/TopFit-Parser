@@ -114,7 +114,7 @@ $stat_mapping = array(
     'Leech' => 'ITEM_MOD_CR_LIFESTEAL_SHORT',
     'Mastery' => 'ITEM_MOD_MASTERY_RATING_SHORT',
     'MovementSpeed' => '',
-    'Multistrike' => 'ITEM_MOD_CR_MULTISTIKE_SHORT',
+    'Multistrike' => 'ITEM_MOD_CR_MULTISTRIKE_SHORT',
     'SpellPower' => 'ITEM_MOD_SPELL_POWER_SHORT',
     'Versatility' => 'ITEM_MOD_VERSATILITY',
     'MainHandDps' => 'ITEM_MOD_DAMAGE_PER_SECOND_SHORT',
@@ -261,6 +261,6 @@ file_put_contents(dirname(__FILE__) . '/presets.lua', $output);
 
 debug('Done!');
 
-echo '<pre>';
+/*echo '<pre>';
 print_r($data);
 echo '</pre>';//*/
