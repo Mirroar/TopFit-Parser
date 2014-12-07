@@ -48,7 +48,7 @@ $stat_mapping = array(
   'dodgertng' => 'ITEM_MOD_DODGE_RATING_SHORT',
   'resirtng' => 'ITEM_MOD_RESILIENCE_RATING_SHORT',
   'pvppower' => 'ITEM_MOD_PVP_POWER_SHORT',
-  'multistrike' => 'ITEM_MOD_CR_MULTISTIKE_SHORT',
+  'multistrike' => 'ITEM_MOD_CR_MULTISTRIKE_SHORT',
   'versatility' => 'ITEM_MOD_VERSATILITY',
   //ITEM_MOD_CR_LIFESTEAL_SHORT
   //ITEM_MOD_EXTRA_ARMOR_SHORT
