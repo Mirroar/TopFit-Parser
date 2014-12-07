@@ -58,7 +58,7 @@ $stat_mapping = array(
   'frores' => 'RESISTANCE4_NAME',
   'holres' => 'RESISTANCE1_NAME',
   'natres' => 'RESISTANCE3_NAME',
-  'shares' => 'RESISTANCE6_NAME',
+  'shares' => 'RESISTANCE5_NAME',
   'dmg' => 'ITEM_MOD_DAMAGE_PER_SECOND_SHORT', // might not really be dps, but +damage, however that really calculates. but good enough for now
 );
 
