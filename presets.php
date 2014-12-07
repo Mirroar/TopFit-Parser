@@ -130,6 +130,7 @@ foreach ($data->Data as $specKey => $specPresets) {
         if (strpos($specKey, $classKey) === 0) {
             $baseRow['classKey'] = $classKey;
             $baseRow['specKey'] = substr($specKey, strlen($classKey));
+            $baseRow['specName'] = $baseRow['specKey'];
 
             // find associated specID
             foreach ($classInfo['specs'] as $spec => $specID) {
@@ -146,6 +147,7 @@ foreach ($data->Data as $specKey => $specPresets) {
             // replace 'Dw' and '2h' with more readable texts
             if (strpos($baseRow['specKey'], 'Dw') == strlen($baseRow['specKey']) - 2) {
                 $baseRow['specKey'] = substr($baseRow['specKey'], 0, strlen($baseRow['specKey']) - 2) . ' (Dual-Wield)';
+                $baseRow['specName'] = substr($baseRow['specName'], 0, strlen($baseRow['specName']) - 2);
             } elseif (strpos($baseRow['specKey'], '2h') == strlen($baseRow['specKey']) - 2) {
                 //$suffix = ' (2-handed)';
                 $suffix = '';
@@ -153,6 +155,7 @@ foreach ($data->Data as $specKey => $specPresets) {
                     $suffix = ' (Titan\'s Grip)';
                 }
                 $baseRow['specKey'] = substr($baseRow['specKey'], 0, strlen($baseRow['specKey']) - 2) . $suffix;
+                $baseRow['specName'] = substr($baseRow['specName'], 0, strlen($baseRow['specName']) - 2);
             }
 
             break;
@@ -234,7 +237,8 @@ foreach ($presets as $className => $classPresets) {
 
     foreach ($classPresets as $preset) {
         $output .= '    {' . "\n";
-        $output .= '      name = "' . str_replace('"', '\\"', $preset['name']) . '",' . "\n";
+        $output .= '      name = "' . str_replace('"', '\\"', $preset['specName']) . '",' . "\n";
+        $output .= '      wizardName = "' . str_replace('"', '\\"', $preset['name']) . '",' . "\n";
         //$output .= '      description = "' . str_replace('"', '\\"', $preset['description']) . '",' . "\n";
         $output .= '      specialization = ' . $preset['specID'] . ',' . "\n";
         if (empty($defaults[$preset['classKey']][$preset['specID']])) {
