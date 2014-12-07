@@ -265,14 +265,16 @@ foreach ($presets as $className => $classPresets) {
 $output .= '}' . "\n";
 
 $output .= "
--- add some universal stats to every spec at very low scores for leveling
-for class, presets in pairs(ns.presets) do
-  for _, preset in pairs(presets) do
-    preset.weights.RESISTANCE0_NAME = preset.weights.RESISTANCE0_NAME or 0.001
-    preset.weights.ITEM_MOD_STAMINA_SHORT = preset.weights.ITEM_MOD_STAMINA_SHORT or 0.01
-    preset.weights.ITEM_MOD_CRIT_RATING_SHORT = preset.weights.ITEM_MOD_CRIT_RATING_SHORT or 0.01
-    preset.weights.ITEM_MOD_MASTERY_RATING_SHORT = preset.weights.ITEM_MOD_MASTERY_RATING_SHORT or 0.01
-    preset.weights.ITEM_MOD_HASTE_RATING_SHORT = preset.weights.ITEM_MOD_HASTE_RATING_SHORT or 0.01
+-- add some universal stats to every spec at very low scores for leveling if character is not max level
+if UnitLevel('player') < MAX_PLAYER_LEVEL_TABLE[#MAX_PLAYER_LEVEL_TABLE] then
+  for class, presets in pairs(ns.presets) do
+    for _, preset in pairs(presets) do
+      preset.weights.RESISTANCE0_NAME = preset.weights.RESISTANCE0_NAME or 0.001
+      preset.weights.ITEM_MOD_STAMINA_SHORT = preset.weights.ITEM_MOD_STAMINA_SHORT or 0.01
+      preset.weights.ITEM_MOD_CRIT_RATING_SHORT = preset.weights.ITEM_MOD_CRIT_RATING_SHORT or 0.01
+      preset.weights.ITEM_MOD_MASTERY_RATING_SHORT = preset.weights.ITEM_MOD_MASTERY_RATING_SHORT or 0.01
+      preset.weights.ITEM_MOD_HASTE_RATING_SHORT = preset.weights.ITEM_MOD_HASTE_RATING_SHORT or 0.01
+    end
   end
 end
 ";
