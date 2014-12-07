@@ -130,11 +130,11 @@ foreach ($data->Data as $specKey => $specPresets) {
         if (strpos($specKey, $classKey) === 0) {
             $baseRow['classKey'] = $classKey;
             $baseRow['specKey'] = substr($specKey, strlen($classKey));
-            $baseRow['specName'] = $baseRow['specKey'];
 
             // find associated specID
             foreach ($classInfo['specs'] as $spec => $specID) {
                 if (strpos($baseRow['specKey'], $spec) === 0) {
+                    $baseRow['specName'] = $spec;
                     $baseRow['specID'] = $specID;
                     break;
                 }
@@ -147,7 +147,6 @@ foreach ($data->Data as $specKey => $specPresets) {
             // replace 'Dw' and '2h' with more readable texts
             if (strpos($baseRow['specKey'], 'Dw') == strlen($baseRow['specKey']) - 2) {
                 $baseRow['specKey'] = substr($baseRow['specKey'], 0, strlen($baseRow['specKey']) - 2) . ' (Dual-Wield)';
-                $baseRow['specName'] = substr($baseRow['specName'], 0, strlen($baseRow['specName']) - 2);
             } elseif (strpos($baseRow['specKey'], '2h') == strlen($baseRow['specKey']) - 2) {
                 //$suffix = ' (2-handed)';
                 $suffix = '';
@@ -155,7 +154,11 @@ foreach ($data->Data as $specKey => $specPresets) {
                     $suffix = ' (Titan\'s Grip)';
                 }
                 $baseRow['specKey'] = substr($baseRow['specKey'], 0, strlen($baseRow['specKey']) - 2) . $suffix;
-                $baseRow['specName'] = substr($baseRow['specName'], 0, strlen($baseRow['specName']) - 2);
+            }
+
+            if ($baseRow['specKey'] == 'ProtectionGlad') {
+                $baseRow['specKey'] = 'Protection: Gladiator';
+                $baseRow['specName'] = 'Gladiator';
             }
 
             break;
