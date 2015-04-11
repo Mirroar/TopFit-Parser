@@ -99,6 +99,21 @@ $class_mapping = array(
 	),
 );
 
+// list of specs that can dual-wield in general
+// some are commented out because there are presets with and without dual-wield for those
+$dualwield_specs = array(
+	250, // blood deathknight
+	//251, // frost deathknight
+	252, // unholy deathknight
+	259, // assassination rogue
+	260, // combat rogue
+	261, // subtlety rogue
+	72,  // fury warrior
+	263, // enhancement shaman
+	//268, // brewmaster monk
+	//269, // windwalker monk
+);
+
 $stat_mapping = array(
 	'Agility' => 'ITEM_MOD_AGILITY_SHORT',
 	'Intellect' => 'ITEM_MOD_INTELLECT_SHORT',
@@ -118,7 +133,7 @@ $stat_mapping = array(
 	'SpellPower' => 'ITEM_MOD_SPELL_POWER_SHORT',
 	'Versatility' => 'ITEM_MOD_VERSATILITY',
 	'MainHandDps' => 'ITEM_MOD_DAMAGE_PER_SECOND_SHORT',
-	'OffHandDps' => 'ITEM_MOD_DAMAGE_PER_SECOND_SHORT', // not used if MainHandDps is also defined
+	'OffHandDps' => 'ITEM_MOD_DAMAGE_PER_SECOND_SHORT', // currently not used if MainHandDps is also defined
 );
 
 $presets = array();
@@ -184,6 +199,10 @@ foreach ($data->Data as $specKey => $specPresets) {
 			$row['name'] = str_replace('PvE: ', '', $row['name']);
 			$row['name'] = str_replace(' Build', '', $row['name']);
 
+			if (in_array($baseRow['specID'], $dualwield_specs) || strpos($row['name'], 'Dual-Wield') !== FALSE) {
+				$row['dualwield'] = TRUE;
+			}
+
 			$row['description'] = $preset->Description;
 
 			// parse weights
@@ -247,6 +266,9 @@ foreach ($presets as $className => $classPresets) {
 		if (empty($defaults[$preset['classKey']][$preset['specID']])) {
 			$defaults[$preset['classKey']][$preset['specID']] = TRUE;
 			$output .= '			default = true,' . "\n";
+		}
+		if (!empty($preset['dualwield'])) {
+			$output .= '			dualwield = true,' . "\n";
 		}
 		$output .= '			weights = {' . "\n";
 
